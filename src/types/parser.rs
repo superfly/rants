@@ -54,7 +54,11 @@ fn control_line(input: &str) -> IResult<&str, ServerControl> {
 
 fn info_after_op_name(input: &str) -> IResult<&str, Info> {
     let (input, _) = space1(input)?;
-    map_res(take_until(util::MESSAGE_TERMINATOR), serde_json::from_str)(input)
+    let (input, mut info): (_, Info) =
+        map_res(take_until(util::MESSAGE_TERMINATOR), serde_json::from_str)(input)?;
+    // filter out invalid addresses
+    info.connect_urls.retain(|u| u.is_valid());
+    Ok((input, info))
 }
 
 fn info(input: &str) -> IResult<&str, ServerControl> {
