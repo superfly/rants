@@ -69,6 +69,11 @@ impl Address {
     pub fn authorization(&self) -> Option<&Authorization> {
         self.authorization.as_ref()
     }
+
+    /// Returns true if the address is valid (non-empty domain)
+    pub fn is_valid(&self) -> bool {
+        !self.domain.is_empty()
+    }
 }
 
 impl fmt::Display for Address {
@@ -108,7 +113,8 @@ impl FromStr for Address {
         // Parse the domain and port
         let (domain, maybe_port) = util::split_after(rest, util::DOMAIN_PORT_SEPARATOR);
         if domain.is_empty() {
-            return Err(Error::InvalidAddress(String::from(s)));
+            // technically an error, but sometimes `connect_urls` will have a
+            // few invalid entries and we don't want the whole deserialize to fail
         }
         let port = if let Some(maybe_port) = maybe_port {
             maybe_port
@@ -215,8 +221,12 @@ mod tests {
         let a = "".parse::<Address>();
         assert!(a.is_err());
 
-        let a = ":1234".parse::<Address>();
-        assert!(a.is_err());
+        let a = ":1234".parse::<Address>().unwrap();
+        assert!(!a.is_valid());
+        assert_eq!(a.domain(), "");
+        assert_eq!(a.port(), 1234);
+        assert!(a.authorization().is_none());
+        assert_eq!(&a.to_string(), ":1234");
 
         let a = "domain:".parse::<Address>();
         assert!(a.is_err());
